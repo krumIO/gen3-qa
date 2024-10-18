@@ -5,17 +5,20 @@
 import { sleep, group, check } from 'k6';
 import http from 'k6/http';
 import { Rate } from 'k6/metrics';
-import { getCommonVariables, setAccessTokenFromApiKey, uuidv4 } from '../../utils/helpers.js';
+import { getCommonVariables, getAccessTokenFromApiKey, uuidv4 } from '../../utils/helpers.js';
 const myFailRate = new Rate('failed_requests');
 
 const credentials = JSON.parse(open('../../utils/credentials.json'));
 console.log(`credentials.key_id: ${credentials.key_id}`);
 
-if (!__ENV.VIRTUAL_USERS) {
-  __ENV.VIRTUAL_USERS = JSON.stringify([
-    { "target": 1 }
+//Default values:
+__ENV.RELEASE_VERSION = __ENV.RELEASE_VERSION || "v3.3.1";
+__ENV.VIRTUAL_USERS = __ENV.VIRTUAL_USERS || JSON.stringify([
+  { "duration": "1s", "target": 1 },
+  { "duration": "5s", "target": 5 },
+  // { "duration": "300s", "target": 10 },
+  // { "duration": "600s", "target": 20 }
   ]);
-}
 console.log(`VIRTUAL_USERS: ${__ENV.VIRTUAL_USERS}`);
 
 export const options = {
@@ -37,12 +40,13 @@ export function setup() {
 }
 
 export default function (env) {
+  let accessToken = env.ACCESS_TOKEN;
   const url = `${env.GEN3_HOST}/index/index`;
   // console.log(`sending req to: ${url}`);
   const params = {
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${__ENV.ACCESS_TOKEN}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     tags: { name: 'Indexd-record-creation' }
   };
@@ -62,6 +66,14 @@ export default function (env) {
   const strBody = JSON.stringify(body);
   // console.log(`debugging: ${JSON.stringify(body)}`);
 
+  const tokenRefreshParams = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    tags: { name: 'renewingToken1' }
+  };
+
   console.log(`submitting: ${__ITER}`); // eslint-disable-line no-undef
 
   group('Creating indexd records', () => {
@@ -70,20 +82,10 @@ export default function (env) {
 
     // If the ACCESS_TOKEN expires, renew it with the apiKey
     if (res.status === 401) {
-      console.log('renewing access token!!!');
       console.log(`Request response: ${res.status}`);
       console.log(`Request response: ${res.body}`);
-
-      const params = {
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        tags: { name: 'renewingToken1' }
-      };
-      setAccessTokenFromApiKey(env, params);
-
-      console.log(`NEW ACCESS TOKEN!: ${env.ACCESS_TOKEN}`);
+      accessToken = getAccessTokenFromApiKey(env, tokenRefreshParams);
+      console.log(`NEW ACCESS TOKEN!: ${accessToken}`);
     } else {
       // console.log(`Request performed: ${new Date()}`);
       console.log(`Request response: ${res.status}`);

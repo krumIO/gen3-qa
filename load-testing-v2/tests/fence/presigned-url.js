@@ -11,15 +11,14 @@ const myFailRate = new Rate('failed_requests');
 const credentials = JSON.parse(open('../../utils/credentials.json'));
 console.log(`credentials.key_id: ${credentials.key_id}`);
 
-if (!__ENV.VIRTUAL_USERS) {
-  __ENV.VIRTUAL_USERS = JSON.stringify([
-    { "duration": "3s", "target": 1 },
-    // { "duration": "10s", "target": 10 },
-    // { "duration": "120s", "target": 100 },
-    // { "duration": "120s", "target": 300 },
-    // { "duration": "30s", "target": 1 },
+//Default values:
+__ENV.RELEASE_VERSION = __ENV.RELEASE_VERSION || "v3.3.1";
+__ENV.VIRTUAL_USERS = __ENV.VIRTUAL_USERS || JSON.stringify([
+  { "duration": "1s", "target": 1 },
+  // { "duration": "10s", "target": 10 },
+  // { "duration": "300s",  "target": 100 },
+  // { "duration": "30s", "target": 1 }
   ]);
-}
 console.log(`VIRTUAL_USERS: ${__ENV.VIRTUAL_USERS}`);
 
 // __ENV.GUIDS_LIST should contain either a list of GUIDs from load-test-descriptor.json
@@ -48,6 +47,8 @@ export function setup() {
 
 export default function (env) {
   const url = `${env.GEN3_HOST}/user/data/download/${guids[Math.floor(Math.random() * guids.length)]}`;
+
+  console.log(`env.ACCESS_TOKEN: ${env.ACCESS_TOKEN}`);
   const params = {
     headers: {
       'Content-Type': 'application/json',
