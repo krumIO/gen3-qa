@@ -7,17 +7,18 @@ import http from 'k6/http';
 import { Rate } from 'k6/metrics';
 import { getCommonVariables } from '../../utils/helpers.js';
 const myFailRate = new Rate('failed_requests');
-
 const credentials = JSON.parse(open('../../utils/credentials.json'));
 console.log(`credentials.key_id: ${credentials.key_id}`);
 
-if (!__ENV.VIRTUAL_USERS) {
-  __ENV.VIRTUAL_USERS = JSON.stringify([
+//Default values:
+__ENV.VU_COUNT = __ENV.VU_COUNT || "1";
+__ENV.DURATION = __ENV.DURATION || "5";
+__ENV.RELEASE_VERSION = __ENV.RELEASE_VERSION || "v3.3.1";
+__ENV.VIRTUAL_USERS = __ENV.VIRTUAL_USERS || JSON.stringify([
     { duration: '30s', target: __ENV.VU_COUNT },
     { duration: `${__ENV.DURATION}s`, target: __ENV.VU_COUNT },
     { duration: '30s', target: 0 },
   ]);
-}
 console.log(`VIRTUAL_USERS: ${__ENV.VIRTUAL_USERS}`);
 
 export const options = {
@@ -36,9 +37,14 @@ export function setup() {
 
   let env = getCommonVariables(__ENV, credentials);
   
-  const DICOM_SERVER_URL = `${GEN3_HOST}/dicom-server`;
-  const studies = JSON.parse(http.get(`${DICOM_SERVER_URL}/studies`, { Authorization: `Bearer ${env.ACCESS_TOKEN}` }).body);
-  // console.log(studies);
+  const DICOM_SERVER_URL = `${env.GEN3_HOST}/dicom-server`;
+  const response = http.get(`${DICOM_SERVER_URL}/studies`, { Authorization: `Bearer ${env.ACCESS_TOKEN}` });
+  console.log(`Response: ${response.status}`);
+  console.log(`body: ${response.body}`);
+  const studies = JSON.parse(response.body);
+  console.log(`studies: ${studies}`);
+  console.log(`studies type: ${typeof studies}`);
+
   let studyUrl = '';
   studies.forEach((study) => {
     // console.log(study);
